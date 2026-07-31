@@ -1,5 +1,7 @@
 # energy-margin-pipeline
 
+[![ci](https://github.com/pkosel/energy-margin-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/pkosel/energy-margin-pipeline/actions/workflows/ci.yml)
+
 Local Airflow + dbt + Postgres environment for energy margin analytics.
 
 Status: infrastructure only. There are no dbt models and no ingestion yet — the
