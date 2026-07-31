@@ -1,0 +1,49 @@
+---
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Same linters as locally, via the dev shell, so versions cannot drift.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command pre-commit run --all-files
+
+  # Brings the real stack up and exercises it; there is no lighter path to
+  # checking that Airflow and dbt actually work together.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # .env supplies the non-secret defaults; the two secrets go into the job
+      # environment, which Compose prefers over .env.
+      - name: Throwaway secrets for this run
+        run: |
+          cp .env.example .env
+          echo "FERNET_KEY=$(python3 -c 'import base64, os
+          print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" >> "$GITHUB_ENV"
+          echo "AIRFLOW_JWT_SECRET=$(python3 -c 'import secrets
+          print(secrets.token_hex(32))')" >> "$GITHUB_ENV"
+
+      # --wait blocks until the healthchecks pass, so a broken stack fails here
+      # rather than in the steps below.
+      - run: docker compose up -d --build --wait
+
+      # Parse-level: every DAG file imports and satisfies the DAG policy checks.
+      - run: docker compose exec -T airflow-scheduler pytest tests/ -v
+
+      # End-to-end: --use-executor routes the task through LocalExecutor instead
+      # of running it in-process, so this covers the parts a bare `dbt debug`
+      # cannot — task environment, dbt on PATH, callback to the API server.
+      # Exits non-zero when the DAG run fails. Works while the DAG is paused.
+      - run: docker compose exec -T airflow-scheduler airflow dags test smoke_test --use-executor
+
+      - if: failure()
+        run: docker compose logs
