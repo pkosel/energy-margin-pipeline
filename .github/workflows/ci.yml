@@ -22,11 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # .env supplies the non-secret defaults; the two secrets go into the job
+      # .env supplies the non-secret defaults; the values below go into the job
       # environment, which Compose prefers over .env.
-      - name: Throwaway secrets for this run
+      - name: Environment for this run
         run: |
           cp .env.example .env
+          # The runner checks out as a different uid than .env.example assumes.
+          # Without this, containers cannot write the bind-mounted dbt/, and dbt
+          # exits 2 without output because it fails before its logger exists.
+          echo "AIRFLOW_UID=$(id -u)" >> "$GITHUB_ENV"
           echo "FERNET_KEY=$(python3 -c 'import base64, os
           print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" >> "$GITHUB_ENV"
           echo "AIRFLOW_JWT_SECRET=$(python3 -c 'import secrets
