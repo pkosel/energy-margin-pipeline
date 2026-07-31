@@ -1,0 +1,20 @@
+# Checked in because it holds no secrets: every value comes from the container
+# environment, which Compose fills from .env.
+energy_margin:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      # Compose service name; only resolvable from inside the network.
+      host: warehouse
+      port: 5432
+      # Deliberately without defaults: Compose always sets these, so a missing
+      # one is a misconfiguration. dbt then names the variable, instead of
+      # Postgres rejecting a silently wrong login.
+      user: "{{ env_var('WAREHOUSE_DB_USER') }}"
+      password: "{{ env_var('WAREHOUSE_DB_PASSWORD') }}"
+      dbname: "{{ env_var('WAREHOUSE_DB_NAME') }}"
+      schema: "{{ env_var('DBT_SCHEMA') }}"
+      threads: 4
+      # Leave TCP keepalive to the OS; dbt's default can drop idle connections.
+      keepalives_idle: 0

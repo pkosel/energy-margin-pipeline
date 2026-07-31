@@ -1,0 +1,29 @@
+name: energy_margin
+version: 1.0.0
+config-version: 2
+
+profile: energy_margin
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - target
+  - dbt_packages
+
+# +schema is a suffix on the profile's schema, so these resolve to
+# <DBT_SCHEMA>_staging and <DBT_SCHEMA>_marts.
+models:
+  energy_margin:
+    # Cheap 1:1 renames and casts over raw; no storage cost.
+    staging:
+      +materialized: view
+      +schema: staging
+    # Query-facing, so materialized for read speed.
+    marts:
+      +materialized: table
+      +schema: marts
