@@ -1,0 +1,20 @@
+[sqlfluff]
+dialect = postgres
+templater = jinja
+max_line_length = 100
+# RF01 resolves references against the models it can see; dbt ref()/source()
+# targets are not among them, so it produces false positives.
+exclude_rules = RF01
+
+[sqlfluff:indentation]
+tab_space_size = 4
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+# Stubs ref(), source(), config() etc. so models parse without a dbt run.
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = true

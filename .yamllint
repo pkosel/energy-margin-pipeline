@@ -1,0 +1,17 @@
+extends: default
+
+ignore: |
+  .direnv/
+  dbt/target/
+  dbt/dbt_packages/
+
+rules:
+  line-length:
+    max: 120
+  # GitHub Actions' `on:` key would otherwise be flagged as a boolean.
+  truthy:
+    check-keys: false
+  # Matches what ruff/black do elsewhere; default of 2 is stricter than needed.
+  comments:
+    min-spaces-from-content: 1
+  document-start: disable
