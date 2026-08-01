@@ -4,15 +4,16 @@
 
 Local Airflow + dbt + Postgres environment for energy margin analytics.
 
-Status: infrastructure only. There are no dbt models and no ingestion yet — the
-`smoke_test` DAG exists to prove that Airflow can reach dbt and dbt can reach the
-warehouse.
+Status: ingestion lands raw data; there are no dbt models and no ingestion DAG
+yet. `src/ingest.py` is run by hand, and the `smoke_test` DAG exists to prove
+that Airflow can reach dbt and dbt can reach the warehouse.
 
 ## Layout
 
 ```
 airflow/dags/        DAG definitions (bind-mounted into the containers)
 airflow/Dockerfile   Airflow image, plus an isolated dbt venv
+src/                 ingestion; plain Python, no Airflow imports
 dbt/                 dbt project root; also the profiles dir
 tests/               pytest suite, run inside the scheduler container
 warehouse/init/      SQL applied once, on first creation of the warehouse volume
@@ -50,6 +51,7 @@ triggering it.
 
 ```sh
 just              # list recipes
+just ingest --start 2026-05-01 --end 2026-07-31
 just dbt run      # any dbt command, in the scheduler container
 just test         # pytest
 just lint         # pre-commit across all files
@@ -70,10 +72,27 @@ The image installs Airflow under its official constraints file, then dbt into
 `/opt/dbt-venv`, which is added to `PATH`. Consequently dbt is only callable as a
 subprocess (`BashOperator`), not importable from DAG code.
 
-**Schemas.** `warehouse/init/01_init.sql` creates `raw` for ingested data. dbt
+**Schemas.** `warehouse/init/` creates `raw` and its landing tables. dbt
 writes to `DBT_SCHEMA` (default `analytics`), and per-directory `+schema` settings
-make Postgres targets `analytics_staging` and `analytics_marts`. The init script
-runs only when the volume is empty, so schema changes there require `just nuke`.
+make Postgres targets `analytics_staging` and `analytics_marts`. The init scripts
+run only when the volume is empty, so schema changes there require dropping it.
+To keep Airflow metadata while doing so, replace the warehouse alone rather than
+running `just nuke`:
+
+```sh
+docker compose rm -sf warehouse
+docker volume rm energy-margin-pipeline_warehouse-db
+just up
+```
+
+**Ingestion is idempotent.** Both raw tables are keyed on their natural key and
+`src/ingest.py` upserts, while synthetic consumption is derived from a stable
+digest of `(customer_id, timestamp)` rather than `hash()`, which is salted per
+process. Re-running any period therefore changes nothing but `loaded_at`.
+
+**Prices stay at 15 minutes.** That is the grain the source publishes;
+aggregating to hourly is a modelling decision and belongs in dbt. Consumption is
+hourly, so the two are reconciled downstream, not during ingestion.
 
 **Airflow parallelism** is capped at 4 tasks to keep a laptop responsive under
 `LocalExecutor`.
