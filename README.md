@@ -72,18 +72,11 @@ The image installs Airflow under its official constraints file, then dbt into
 `/opt/dbt-venv`, which is added to `PATH`. Consequently dbt is only callable as a
 subprocess (`BashOperator`), not importable from DAG code.
 
-**Schemas.** `warehouse/init/` creates `raw` and its landing tables. dbt
-writes to `DBT_SCHEMA` (default `analytics`), and per-directory `+schema` settings
-make Postgres targets `analytics_staging` and `analytics_marts`. The init scripts
-run only when the volume is empty, so schema changes there require dropping it.
-To keep Airflow metadata while doing so, replace the warehouse alone rather than
-running `just nuke`:
-
-```sh
-docker compose rm -sf warehouse
-docker volume rm energy-margin-pipeline_warehouse-db
-just up
-```
+**Schemas.** `warehouse/init/01_init.sql` creates `raw` and its landing tables.
+dbt writes to `DBT_SCHEMA` (default `analytics`), and per-directory `+schema`
+settings make Postgres targets `analytics_staging` and `analytics_marts`.
+Postgres runs the init script only on an empty volume, so editing it means
+recreating the database with `just nuke`.
 
 **Ingestion is idempotent.** Both raw tables are keyed on their natural key and
 `src/ingest.py` upserts, while synthetic consumption is derived from a stable

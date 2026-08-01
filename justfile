@@ -11,13 +11,11 @@ up:
 down:
     docker compose down
 
-# Drops the volumes too: warehouse data, Airflow metadata and the admin user.
-# Needed after editing warehouse/init.
+# Drops warehouse data and Airflow metadata; the only way to re-apply warehouse/init.
 nuke:
     docker compose down -v
 
-# Only for image changes (Dockerfile, requirements). DAGs and dbt models are
-# bind-mounted and need no rebuild.
+# Only for image changes (Dockerfile, requirements); DAGs and dbt are bind-mounted.
 rebuild:
     docker compose build
 
@@ -35,8 +33,7 @@ logs service="":
 dbt *args:
     docker compose exec airflow-scheduler dbt {{ args }}
 
-# Plain Python, no Airflow imports; a DAG will call the same functions later.
-# Example: just ingest --start 2026-05-01 --end 2026-07-31
+# Plain Python, no Airflow. Example: just ingest --start 2026-05-01 --end 2026-07-31
 ingest *args:
     docker compose exec airflow-scheduler python -m src.ingest {{ args }}
 
