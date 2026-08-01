@@ -1,3 +1,7 @@
 apache-airflow-providers-postgres
 
+# Ingestion driver. Airflow's constraints file pins only psycopg2-binary, which
+# the provider above brings in, so psycopg 3 resolves independently of it.
+psycopg[binary]
+
 pytest

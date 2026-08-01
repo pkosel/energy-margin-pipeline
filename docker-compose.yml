@@ -32,8 +32,13 @@ x-airflow-common:
     # LocalExecutor runs tasks as subprocesses; capped to stay laptop-friendly.
     AIRFLOW__CORE__PARALLELISM: '4'
     AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: '4'
+    # Airflow only adds config/ and plugins/ to sys.path, so src/ needs this to
+    # be importable from DAG code and from the tests.
+    PYTHONPATH: /opt/airflow
     DBT_PROFILES_DIR: /usr/app/dbt
     DBT_PROJECT_DIR: /usr/app/dbt
+    # Compose service name; ingestion connects directly, dbt via profiles.yml.
+    WAREHOUSE_DB_HOST: warehouse
     # dbt resolves these itself via env_var() in profiles.yml.
     WAREHOUSE_DB_USER: ${WAREHOUSE_DB_USER:-energy}
     WAREHOUSE_DB_PASSWORD: ${WAREHOUSE_DB_PASSWORD:-energy}
@@ -46,6 +51,8 @@ x-airflow-common:
     - ./airflow/config:/opt/airflow/config
     - ./airflow/plugins:/opt/airflow/plugins
     - ./tests:/opt/airflow/tests
+    # Ingestion code, kept out of dags/ so the DAG processor does not parse it.
+    - ./src:/opt/airflow/src
     # dbt project and profiles; edits apply without rebuilding the image.
     - ./dbt:/usr/app/dbt
   # Host UID keeps bind-mounted output writable; GID 0 is what the base image
