@@ -35,6 +35,11 @@ logs service="":
 dbt *args:
     docker compose exec airflow-scheduler dbt {{ args }}
 
+# Plain Python, no Airflow imports; a DAG will call the same functions later.
+# Example: just ingest --start 2026-05-01 --end 2026-07-31
+ingest *args:
+    docker compose exec airflow-scheduler python -m src.ingest {{ args }}
+
 # Same container, so tests import the Airflow the DAGs actually run on.
 test *args:
     docker compose exec airflow-scheduler pytest tests/ -v {{ args }}
